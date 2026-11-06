@@ -72,22 +72,16 @@ Jika muncul error koneksi Supabase, pastikan URL dan key benar, SQL sudah dijala
 
 ## 4a. Deploy ke Vercel
 
-Repository ini sudah dibuat agar lebih siap untuk deployment di Vercel dengan runtime PHP. Struktur deploy yang disiapkan:
-
-- `vercel.json` untuk konfigurasi Vercel
-- `package.json` untuk script build local dan deployment sanity check
-- `.env.example` sebagai template variabel lingkungan
-- `DEPLOY_VERCEL.md` sebagai panduan deployment resmi
+Vercel menjalankan aplikasi PHP melalui Container Runtime berbasis FrankenPHP. `Dockerfile` dan `Caddyfile` berada di root; `.dockerignore` mengecualikan konfigurasi lokal. Builder lama `@vercel/php` tidak tersedia dan tidak digunakan.
 
 Langkah cepat:
 
-1. Salin `.env.example` ke `.env.local` untuk lokal atau masukkan env var di dashboard Vercel.
-2. Push repo ke GitHub.
-3. Import ke Vercel.
-4. Pastikan project Supabase sudah aktif dan schema SQL sudah dijalankan.
-5. Gunakan publishable key Supabase (`SUPABASE_ANON_KEY`), bukan service role key.
+1. Import repository GitHub ke Vercel. Untuk project yang sudah dibuat, atur Framework Preset ke `Container`.
+2. Tambahkan `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `STORAGE_BUCKET`, `APP_NAME`, dan `SESSION_SECURE` di Vercel Environment Variables.
+3. Pastikan Supabase sudah aktif dan schema SQL serta migration sudah dijalankan.
+4. Redeploy lalu uji halaman dan endpoint `/api.php?action=state`.
 
-Panduan lebih detail ada di [DEPLOY_VERCEL.md](DEPLOY_VERCEL.md).
+Gunakan publishable/anon key, bukan service role key. Sebelum penggunaan operasional, perhatikan batasan session file PHP yang tidak dibagi antar-container. Panduan lengkap ada di [DEPLOY_VERCEL.md](DEPLOY_VERCEL.md).
 
 ## 5. Cara menggunakan
 

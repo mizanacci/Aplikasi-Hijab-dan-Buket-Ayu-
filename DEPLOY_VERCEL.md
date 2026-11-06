@@ -1,34 +1,40 @@
 # Deploy ke Vercel
 
-Perhatian: aplikasi ini saat ini adalah aplikasi PHP + Supabase. Vercel dapat menangani deployment PHP melalui build runtime `@vercel/php`, tetapi tetap dibutuhkan konfigurasi environment variable dan project Supabase yang aktif.
+Aplikasi ini memakai PHP. Vercel tidak menyediakan builder `@vercel/php`; deployment memakai Container Runtime resmi dengan FrankenPHP. Root `Dockerfile` dan `Caddyfile` menyiapkan runtime PHP serta melayani halaman dan endpoint API. Jangan menambahkan kembali konfigurasi `builds` yang memakai `@vercel/php`.
 
-## 1. Persiapan
+## Persiapan
 
-1. Pastikan repo GitHub sudah terkoneksi dan branch utama aktif.
-2. Siapkan project Supabase yang sudah menjalankan schema SQL di `supabase/schema.sql`.
-3. Salin file `.env.example` ke `.env.local` untuk lokal, atau masukkan variabel ke dashboard Vercel.
+1. Pastikan repository GitHub terhubung ke project Vercel.
+2. Jalankan `supabase/schema.sql` dan migration di `supabase/migrations/` pada project Supabase.
+3. Pastikan Dockerfile dan Caddyfile ada di root repository.
 
-## 2. Variabel lingkungan Vercel
+## Environment variables
 
-Set di Vercel Project > Settings > Environment Variables:
+Tambahkan di Vercel Project > Settings > Environment Variables untuk Production dan Preview:
 
 - `SUPABASE_URL`
-- `SUPABASE_ANON_KEY`
-- `STORAGE_BUCKET`
+- `SUPABASE_ANON_KEY` (publishable/anon key, bukan service role/secret)
+- `STORAGE_BUCKET` (biasanya `inventory-images`)
 - `APP_NAME`
-- `SESSION_SECURE`
+- `SESSION_SECURE` (`true` untuk deployment HTTPS)
 
-## 3. Deploy
+Sesudah mengubah environment variables, lakukan redeploy.
 
-1. Push repository ke GitHub.
-2. Import repo ke Vercel.
-3. Pilih framework: `Other` / static + PHP serverless config.
-4. Pastikan Vercel membaca `vercel.json` di root.
-5. Deploy dan uji halaman login serta endpoint `api.php`.
+## Konfigurasi project Vercel
 
-## 4. Catatan penting
+Jika project dibuat sebelum Dockerfile ditambahkan, ubah **Framework Preset** ke **Container** pada Project Settings > Build and Deployment. Untuk project yang masih terhubung melalui Vercel CLI, gunakan `vercel project update --framework container --yes`. Root Dockerfile menjadi konfigurasi build; jangan memakai builder `@vercel/php` dari `vercel.json`.
 
-- Jangan pernah menyimpan `service_role` atau secret key di repo atau Vercel public env.
-- Gunakan `SUPABASE_ANON_KEY` / publishable key saja.
-- File `config.php` tetap lokal dan tidak dijadikan bagian dari repo publik.
-- Jika deploy Anda memakai Vercel Production, hapus atau pastikan `config.php` tidak di-commit.
+## Uji deployment
+
+Setelah deployment berstatus Ready, buka:
+
+- `/` untuk halaman aplikasi
+- `/api.php?action=state` untuk memeriksa endpoint dan konfigurasi
+
+Respons state harus memuat `"configured":true`. Kemudian uji signup/login dan alur inventaris.
+
+## Batasan sesi
+
+PHP menyimpan session secara default sebagai file lokal. File itu tidak dibagi antar-container dan tidak dijamin bertahan ketika instance diganti atau diskalakan. Sebelum penggunaan produksi, gunakan session store bersama (misalnya Redis) atau pindahkan sesi autentikasi ke mekanisme bersama. Uji login dan beberapa request berurutan pada deployment; bila sesi terputus, jangan menganggap deployment siap operasional.
+
+File `.dockerignore` mengecualikan `config.php` dan file environment lokal agar tidak masuk ke container image. Jangan commit kredensial atau menaruh service role key pada environment variable yang dapat diakses browser.

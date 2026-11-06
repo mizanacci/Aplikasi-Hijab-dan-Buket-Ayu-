@@ -1,9 +1,0 @@
-{
-  "name": "ruang-stok",
-  "private": true,
-  "scripts": {
-    "dev": "php -S localhost:8000",
-    "build": "php -l api.php && php -l includes/bootstrap.php && php -l includes/supabase.php && php -l index.php",
-    "vercel-build": "php -l api.php && php -l includes/bootstrap.php && php -l includes/supabase.php && php -l index.php"
-  }
-}

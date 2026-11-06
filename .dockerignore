@@ -1,0 +1,9 @@
+.git
+.gitignore
+.vercel
+node_modules
+referensi-bisnis
+config.php
+config.example.php
+.env
+.env.*
