@@ -1,0 +1,11 @@
+Options -Indexes
+
+# Lindungi konfigurasi dan folder internal dari akses web langsung.
+<FilesMatch "^(config\.php|config\.example\.php|\.gitignore|README\.md|PROMPT_GITHUB_COPILOT\.md)$">
+  Require all denied
+</FilesMatch>
+
+<IfModule mod_rewrite.c>
+  RewriteEngine On
+  RewriteRule ^(includes|supabase|referensi-bisnis)(/|$) - [F,L,NC]
+</IfModule>
