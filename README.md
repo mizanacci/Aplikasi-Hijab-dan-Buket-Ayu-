@@ -70,6 +70,25 @@ Buka `http://localhost:8000` pada browser.
 
 Jika muncul error koneksi Supabase, pastikan URL dan key benar, SQL sudah dijalankan, internet aktif, serta ekstensi `curl` dan `fileinfo` PHP aktif.
 
+## 4a. Deploy ke Vercel
+
+Repository ini sudah dibuat agar lebih siap untuk deployment di Vercel dengan runtime PHP. Struktur deploy yang disiapkan:
+
+- `vercel.json` untuk konfigurasi Vercel
+- `package.json` untuk script build local dan deployment sanity check
+- `.env.example` sebagai template variabel lingkungan
+- `DEPLOY_VERCEL.md` sebagai panduan deployment resmi
+
+Langkah cepat:
+
+1. Salin `.env.example` ke `.env.local` untuk lokal atau masukkan env var di dashboard Vercel.
+2. Push repo ke GitHub.
+3. Import ke Vercel.
+4. Pastikan project Supabase sudah aktif dan schema SQL sudah dijalankan.
+5. Gunakan publishable key Supabase (`SUPABASE_ANON_KEY`), bukan service role key.
+
+Panduan lebih detail ada di [DEPLOY_VERCEL.md](DEPLOY_VERCEL.md).
+
 ## 5. Cara menggunakan
 
 1. Daftarkan akun melalui halaman masuk. Satu akun memiliki data inventaris pribadi.

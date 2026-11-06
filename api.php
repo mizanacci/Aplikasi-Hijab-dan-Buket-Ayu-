@@ -88,7 +88,7 @@ try {
     $userId = $auth['user']['id'];
 
     if ($action === 'items_list') {
-        $data = sb_assert(sb_request('GET', 'rest/v1/inventory_items?select=*&user_id=eq.' . rawurlencode($userId) . '&order=updated_at.desc', null, $token), 'Gagal mengambil data stok.');
+        $data = sb_assert(sb_request('GET', 'rest/v1/inventory_items?select=*&user_id=eq.' . rawurlencode($userId) . '&is_active=eq.true&order=updated_at.desc', null, $token), 'Gagal mengambil data stok.');
         json_response(['ok' => true, 'items' => $data ?? []]);
     }
 
@@ -106,6 +106,7 @@ try {
             $currentImagePath = (string)($currentItem['image_path'] ?? '');
         }
 
+        $initialStock = max(0, (float)($input['stock_qty'] ?? 0));
         $payload = [
             'user_id' => $userId,
             'category' => $category,
@@ -114,7 +115,7 @@ try {
             'color' => trim((string)($input['color'] ?? '')) ?: null,
             'sku' => trim((string)($input['sku'] ?? '')) ?: null,
             'unit' => trim((string)($input['unit'] ?? 'pcs')) ?: 'pcs',
-            'stock_qty' => max(0, (float)($input['stock_qty'] ?? 0)),
+            'stock_qty' => $initialStock,
             'min_stock' => max(0, (float)($input['min_stock'] ?? 0)),
             'purchase_price' => max(0, (float)($input['purchase_price'] ?? 0)),
             'stem_price' => max(0, (float)($input['stem_price'] ?? 0)),
@@ -122,6 +123,7 @@ try {
             'description' => trim((string)($input['description'] ?? '')) ?: null,
             'image_url' => trim((string)($input['image_url'] ?? '')) ?: null,
             'image_path' => trim((string)($input['image_path'] ?? '')) ?: null,
+            'is_active' => true,
         ];
         if ($id !== '') {
             unset($payload['stock_qty'], $payload['user_id']);
@@ -133,6 +135,18 @@ try {
             }
         } else {
             $data = sb_assert(sb_request('POST', 'rest/v1/inventory_items', $payload, $token, ['Prefer: return=representation']), 'Gagal menyimpan barang.');
+            $createdItem = is_array($data) ? ($data[0] ?? null) : null;
+            if ($createdItem && $initialStock > 0) {
+                $movement = sb_assert(sb_request('POST', 'rest/v1/rpc/register_stock_movement', [
+                    'p_item_id' => $createdItem['id'],
+                    'p_movement_type' => 'OPENING',
+                    'p_quantity' => $initialStock,
+                    'p_note' => 'Saldo awal barang',
+                ], $token), 'Gagal mencatat saldo awal barang.');
+                if (isset($createdItem['stock_qty']) && $createdItem['stock_qty'] !== $initialStock) {
+                    $createdItem['stock_qty'] = $initialStock;
+                }
+            }
         }
         json_response(['ok' => true, 'item' => is_array($data) ? ($data[0] ?? null) : null, 'message' => 'Data barang berhasil disimpan.']);
     }
@@ -140,11 +154,11 @@ try {
     if ($action === 'item_delete') {
         $id = trim((string)($input['id'] ?? ''));
         $existing = fetch_owned_item($token, $id, $userId);
-        $deleteResult = sb_assert(sb_request('DELETE', 'rest/v1/inventory_items?id=eq.' . sb_path_id($id) . '&user_id=eq.' . rawurlencode($userId), null, $token), 'Gagal menghapus barang.');
+        $archiveResult = sb_assert(sb_request('POST', 'rest/v1/rpc/archive_item', ['p_item_id' => $id], $token), 'Gagal mengarsipkan barang.');
         if (!empty($existing['image_path'])) {
             delete_storage_object_by_path($token, (string)$existing['image_path']);
         }
-        json_response(['ok' => true, 'message' => 'Barang berhasil dihapus.']);
+        json_response(['ok' => true, 'message' => 'Barang berhasil diarsipkan.']);
     }
 
     if ($action === 'stock_move') {

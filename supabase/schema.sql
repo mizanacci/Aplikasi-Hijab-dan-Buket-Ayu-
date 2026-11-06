@@ -21,6 +21,9 @@ create table if not exists public.inventory_items (
     description text,
     image_url text,
     image_path text,
+    is_active boolean not null default true,
+    archived_at timestamptz,
+    archived_by uuid,
     created_at timestamptz not null default now(),
     updated_at timestamptz not null default now()
 );
@@ -36,7 +39,7 @@ create table if not exists public.stock_movements (
     id uuid primary key default gen_random_uuid(),
     user_id uuid not null references auth.users(id) on delete cascade,
     item_id uuid not null references public.inventory_items(id) on delete cascade,
-    movement_type text not null check (movement_type in ('IN','OUT','ADJUSTMENT')),
+    movement_type text not null check (movement_type in ('OPENING','IN','OUT','ADJUSTMENT')),
     quantity numeric(12,2) not null check (quantity > 0),
     stock_before numeric(12,2) not null,
     stock_after numeric(12,2) not null check (stock_after >= 0),
@@ -88,7 +91,7 @@ begin
     if auth.uid() is null then
         raise exception 'Anda harus login untuk mengubah stok.';
     end if;
-    if p_movement_type not in ('IN','OUT','ADJUSTMENT') then
+    if p_movement_type not in ('OPENING','IN','OUT','ADJUSTMENT') then
         raise exception 'Jenis perubahan stok tidak valid.';
     end if;
     if p_quantity is null or p_quantity <= 0 then
@@ -104,7 +107,12 @@ begin
         raise exception 'Barang tidak ditemukan atau bukan milik akun ini.';
     end if;
 
-    if p_movement_type = 'IN' then
+    if p_movement_type = 'OPENING' then
+        if v_item.stock_qty > 0 then
+            raise exception 'Saldo awal hanya boleh dipasang pada item baru yang belum mempunyai stok.';
+        end if;
+        v_new_stock := p_quantity;
+    elsif p_movement_type = 'IN' then
         v_new_stock := v_item.stock_qty + p_quantity;
     elsif p_movement_type = 'OUT' then
         v_new_stock := v_item.stock_qty - p_quantity;
@@ -138,6 +146,43 @@ begin
 end;
 $$;
 
+create or replace function public.archive_item(p_item_id uuid)
+returns jsonb
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+    v_item public.inventory_items%rowtype;
+begin
+    if auth.uid() is null then
+        raise exception 'Anda harus login untuk mengarsipkan barang.';
+    end if;
+
+    select * into v_item
+    from public.inventory_items
+    where id = p_item_id and user_id = auth.uid()
+    for update;
+
+    if not found then
+        raise exception 'Barang tidak ditemukan atau bukan milik akun ini.';
+    end if;
+
+    update public.inventory_items
+    set is_active = false,
+        archived_at = now(),
+        archived_by = auth.uid(),
+        updated_at = now()
+    where id = v_item.id;
+
+    return jsonb_build_object(
+        'id', v_item.id,
+        'archived_at', now(),
+        'is_active', false
+    );
+end;
+$$;
+
 -- Akses tabel: hanya user terautentikasi, dan hanya baris miliknya sendiri.
 alter table public.inventory_items enable row level security;
 alter table public.stock_movements enable row level security;
@@ -167,6 +212,8 @@ using ((select auth.uid()) = user_id);
 
 revoke all on function public.register_stock_movement(uuid, text, numeric, text) from public, anon;
 grant execute on function public.register_stock_movement(uuid, text, numeric, text) to authenticated;
+revoke all on function public.archive_item(uuid) from public, anon;
+grant execute on function public.archive_item(uuid) to authenticated;
 
 -- Bucket foto. Bucket public hanya membuat URL foto dapat ditampilkan; upload/update/delete
 -- tetap dibatasi berdasarkan folder pertama = UUID pengguna yang sedang login.

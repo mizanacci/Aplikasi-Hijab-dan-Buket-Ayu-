@@ -4,7 +4,7 @@
  * Jangan pernah memasukkan service_role/secret key ke aplikasi ini.
  */
 return [
-    'supabase_url' => 'https://cvdmucmjujvbfgjsxaoj.supabase.co/rest/v1/',
+    'supabase_url' => 'https://PROJECT-REF.supabase.co',
     'supabase_anon_key' => 'SUPABASE_PUBLISHABLE_OR_LEGACY_ANON_KEY',
     'storage_bucket' => 'inventory-images',
     'app_name' => 'Ruang Stok',

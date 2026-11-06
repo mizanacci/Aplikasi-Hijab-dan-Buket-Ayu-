@@ -3,6 +3,11 @@
 /.env
 /.env.*
 !/config.example.php
+!.env.example
+
+# Vercel / deployment
+.vercel/
+node_modules/
 
 # Editor / OS
 .vscode/
