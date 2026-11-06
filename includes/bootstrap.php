@@ -1,11 +1,22 @@
 <?php
 // Inisialisasi sesi dan konfigurasi aplikasi.
 $configFile = dirname(__DIR__) . '/config.php';
-$GLOBALS['APP_CONFIG'] = is_file($configFile) ? require $configFile : null;
+$configFromFile = is_file($configFile) ? require $configFile : null;
+
+$GLOBALS['APP_CONFIG'] = $configFromFile;
+if (!is_array($GLOBALS['APP_CONFIG'])) {
+    $GLOBALS['APP_CONFIG'] = [
+        'supabase_url' => getenv('SUPABASE_URL') ?: getenv('NEXT_PUBLIC_SUPABASE_URL') ?: '',
+        'supabase_anon_key' => getenv('SUPABASE_ANON_KEY') ?: getenv('NEXT_PUBLIC_SUPABASE_ANON_KEY') ?: '',
+        'storage_bucket' => getenv('STORAGE_BUCKET') ?: 'inventory-images',
+        'app_name' => getenv('APP_NAME') ?: 'Ruang Stok',
+        'session_secure' => filter_var(getenv('SESSION_SECURE') ?: 'false', FILTER_VALIDATE_BOOLEAN),
+    ];
+}
 
 if (session_status() !== PHP_SESSION_ACTIVE) {
     $config = is_array($GLOBALS['APP_CONFIG'] ?? null) ? $GLOBALS['APP_CONFIG'] : [];
-    $isHttps = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off');
+    $isHttps = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') || (!empty($_SERVER['HTTP_X_FORWARDED_PROTO']) && $_SERVER['HTTP_X_FORWARDED_PROTO'] === 'https');
     $secureCookies = (bool)($config['session_secure'] ?? false) && $isHttps;
     session_set_cookie_params([
         'lifetime' => 0,
